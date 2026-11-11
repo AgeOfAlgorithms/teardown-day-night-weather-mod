@@ -1,0 +1,7 @@
+name = Day & Night & Weather Cycle
+author = AgeOfAlgorithms and Claude
+description = A day and night cycle on any map, in single player and multiplayer: the sun crosses the sky and sets, the lamps come on, the moon rises. Now and then the weather turns: clouds, rain, thunderstorms and fog, which can overlap. A day and a night take 15 minutes, 6 of them night (both set in the options). For maps and mods: API.md in the mod folder.
+tags = Gameplay
+version = 2
+preview = preview_td.jpg
+
