@@ -15,7 +15,8 @@ DN_PUBLISH_EVERY = 1.0
 DN_DAY_MIN = {2, 5, 9, 15, 30, 45}       -- the options page's daylight lengths, minutes (default 9)
 DN_NIGHT_MIN = {1, 3, 6, 10, 20, 30}     -- and its night lengths (default 6): 15 minutes for a day and a night
 DN_DAY_DEFAULT, DN_NIGHT_DEFAULT = 9, 6
-DN_STARTS = {8, 12, 17, 22}      -- the options page's starting hours (a 5th choice: random)
+DN_STARTS = {8, 12, 17, 22}      -- the options page's starting hours (5: random, 6: as the map; unset: noon)
+DN_NIGHT_FORCE = nil             -- a night level set by a test copy (else the host's option savegame.mod.dark)
 
 -- every property this mod sets: read from the map at the start, put back when standing down
 local PROPS = {"skybox", "skyboxbrightness", "skyboxtint", "sunBrightness", "sunColorTint", "sunDir", "sunFogScale",
@@ -88,10 +89,13 @@ local function startHour()
 	local i = GetInt("savegame.mod.start")
 	if i == 5 then return math.random() * 24 end
 	if DN_STARTS[i] then return DN_STARTS[i] end
-	-- the default: a map that is a night map starts at night, any other in the morning
-	local lamps = kept.nightlight and kept.nightlight[1]
-	if lamps == true or lamps == 1 then return 22 end
-	return 8
+	if i == 6 then
+		-- "as the map": a map that is a night map starts at night, any other in the morning
+		local lamps = kept.nightlight and kept.nightlight[1]
+		if lamps == true or lamps == 1 then return 22 end
+		return 8
+	end
+	return 12                                  -- (the default: midday - the user, 2026-11-11)
 end
 
 function DayNight.hour() return hour end
@@ -99,6 +103,7 @@ function DayNight.hour() return hour end
 function DayNight.apply()
 	local k = dnSkyAt(hour)
 	local daySky = dnIsDaySky(hour)
+	dnNightLight(k, DN_NIGHT_FORCE or GetInt("savegame.mod.dark"))       -- (how dark the night is: the host's option)
 	local picture, sound = Weather.look(k, daySky)           -- (the weather on top of the hour: weather.lua)
 	put("skybox", daySky and (picture or DN_DAY_SKY) or DN_NIGHT_SKY)
 	put("skyboxbrightness", k.sky * (daySky and 1 or DN_NIGHT_SKY_SCALE))

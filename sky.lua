@@ -118,3 +118,27 @@ function dnDaylight(h)
 	if v > 1 then v = 1 end
 	return v
 end
+
+-- How dark the night is: the host's choice (the user, 2026-11-11: the darkest suits us, players may not like it).
+-- Each level scales the night's own light on the blended key `k` (changed in place): the sky's brightness, the
+-- moon's light, the fog's colour, and a share of the map's flat `constant` light. The twilight keys and the day are
+-- left alone: `w` is 1 in full night and 0 from twilight on.
+DN_NIGHTS = {
+	{sky = 1, moon = 1, fog = 1, const = 0},           -- 1 pitch dark: the keys as they are
+	{sky = 6, moon = 8, fog = 6, const = 0.08},        -- 2 dark
+	{sky = 20, moon = 30, fog = 20, const = 0.18},     -- 3 moonlit
+	{sky = 60, moon = 80, fog = 60, const = 0.30},     -- 4 bright
+}
+DN_DARK_DEFAULT = 2
+
+function dnNightLight(k, level)
+	local n = DN_NIGHTS[level] or DN_NIGHTS[DN_DARK_DEFAULT]
+	local w = 1 - k.const / 0.3
+	if w <= 0 then return k end
+	if w > 1 then w = 1 end
+	k.sky = k.sky * (1 + (n.sky - 1) * w)
+	k.sun = k.sun * (1 + (n.moon - 1) * w)
+	k.fog = {k.fog[1] * (1 + (n.fog - 1) * w), k.fog[2] * (1 + (n.fog - 1) * w), k.fog[3] * (1 + (n.fog - 1) * w)}
+	k.const = k.const + n.const * w
+	return k
+end
