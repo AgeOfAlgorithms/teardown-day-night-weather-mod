@@ -87,7 +87,7 @@ end
 
 local function startHour()
 	local i = GetInt("savegame.mod.start")
-	if i == 5 then return math.random() * 24 end
+	if i == 5 then return Weather.random() * 24 end
 	if DN_STARTS[i] then return DN_STARTS[i] end
 	if i == 6 then
 		-- "as the map": a map that is a night map starts at night, any other in the morning

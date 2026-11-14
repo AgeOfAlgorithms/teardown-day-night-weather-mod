@@ -46,7 +46,25 @@ local thunderN = 0
 local flashT = 0                        -- seconds left of the running flash
 local flashHold = 0                     -- its middle part's length
 
-local function between(r) return r[1] + (r[2] - r[1]) * math.random() end
+-- The dice: a generator of our own. The game starts every script on the SAME math.random sequence and frames are
+-- too even to stir it (the user, 2026-11-13: it rained at every start), so the seed is a count of this mod's
+-- sessions kept in the savegame, stirred further by the frame times.
+local seed = nil
+
+local function rnd()
+	if not seed then
+		local n = GetInt("savegame.mod.seed") + 1
+		SetInt("savegame.mod.seed", n % 1000000)
+		seed = (n * 7919 + 104729) % 2147483646 + 1
+		for i = 1, 8 do seed = (seed * 16807) % 2147483647 end
+	end
+	seed = (seed * 16807) % 2147483647          -- (Park-Miller: exact in a double)
+	return (seed - 1) / 2147483646
+end
+
+function Weather.random() return rnd() end
+
+local function between(r) return r[1] + (r[2] - r[1]) * rnd() end
 
 local function often()
 	local i = GetInt("savegame.mod.weather")
@@ -110,47 +128,46 @@ end
 
 local function startSky(kind)
 	if kind == "cloudy" then
-		target.cloud, target.rain, target.storm = 0.6 + 0.4 * math.random(), 0, 0
+		target.cloud, target.rain, target.storm = 0.6 + 0.4 * rnd(), 0, 0
 	elseif kind == "rain" then
-		target.cloud, target.rain, target.storm = 1, 0.3 + 0.5 * math.random(), 0
+		target.cloud, target.rain, target.storm = 1, 0.3 + 0.5 * rnd(), 0
 	else
-		target.cloud, target.rain, target.storm = 1, 0.85 + 0.15 * math.random(), 1
+		target.cloud, target.rain, target.storm = 1, 0.85 + 0.15 * rnd(), 1
 	end
 	sky.left = between(WX_SKY_LASTS) * 60
 end
 
 local function startFog()
-	target.fog = 0.55 + 0.45 * math.random()
+	target.fog = 0.55 + 0.45 * rnd()
 	fog.left = between(WX_FOG_LASTS) * 60
 end
 
 function Weather.pickSky()
-	local r = math.random()
+	local r = rnd()
 	return (r < WX_SKY_KINDS.cloudy and "cloudy") or (r < WX_SKY_KINDS.cloudy + WX_SKY_KINDS.rain and "rain") or "storm"
 end
 
 local function clearSky() target.cloud, target.rain, target.storm = 0, 0, 0; sky.left = 0 end
 local function clearFog() target.fog = 0; fog.left = 0 end
 
--- The opening rolls, a second into the session: by then the frames' uneven lengths have stirred the generator (see
--- Weather.tick), in case the game starts every script on the same random sequence.
+-- The opening rolls, a second into the session (the frame times have stirred the generator a little more by then).
 local opening = nil
 
 local function open()
 	-- a session does not open on fresh clocks: each die is rolled once right away (a hit: that weather is already
 	-- there, somewhere in its run), and the first wait is anywhere inside a gap
-	sky.wait, sky.left = math.random() * WX_SKY_GAP[2] * 60, 0
-	fog.wait, fog.left = math.random() * WX_FOG_GAP[2] * 60, 0
+	sky.wait, sky.left = rnd() * WX_SKY_GAP[2] * 60, 0
+	fog.wait, fog.left = rnd() * WX_FOG_GAP[2] * 60, 0
 	local o = often()
 	if o and not GetBool("daynight.weather.off") then
-		if math.random() < math.min(0.95, WX_SKY_CHANCE * o) * 0.5 then
+		if rnd() < math.min(0.95, WX_SKY_CHANCE * o) * 0.5 then
 			startSky(Weather.pickSky())
-			sky.left = sky.left * (0.3 + 0.7 * math.random())
+			sky.left = sky.left * (0.3 + 0.7 * rnd())
 			level.cloud, level.rain, level.storm, wet = target.cloud, target.rain, target.storm, target.rain
 		end
-		if math.random() < math.min(0.95, WX_FOG_CHANCE * o) * 0.5 then
+		if rnd() < math.min(0.95, WX_FOG_CHANCE * o) * 0.5 then
 			startFog()
-			fog.left = fog.left * (0.3 + 0.7 * math.random())
+			fog.left = fog.left * (0.3 + 0.7 * rnd())
 			level.fog = target.fog
 		end
 	end
@@ -172,14 +189,15 @@ local function front(f, gap, chance, start, clear, dt)
 	else
 		f.wait = f.wait - dt
 		if f.wait <= 0 then
-			if math.random() < chance then start() else f.wait = between(gap) * 60 end
+			if rnd() < chance then start() else f.wait = between(gap) * 60 end
 		end
 	end
 end
 
 -- returns true when something changed that should be shown at once (a flash is running)
 function Weather.tick(dt)
-	for i = 1, math.floor(dt * 1000000) % 3 do math.random() end      -- (stirred by the frame time's last digits)
+	rnd()
+	seed = (seed + math.floor(dt * 10000000) % 9973) % 2147483646 + 1      -- (stirred by the frame time's last digits)
 	if opening then
 		opening = opening - dt
 		if opening > 0 then return false end
