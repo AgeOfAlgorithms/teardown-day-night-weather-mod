@@ -1,4 +1,4 @@
--- Day & Night's options (Mod Manager). In multiplayer the host's lengths, weather, night and start count; the stars are each
+-- Day & Night's options (Mod Manager). In multiplayer the host's lengths, weather, night, start and calendar count; the stars are each
 -- player's own (they are drawn on that player's machine).
 
 local function pick(label, y, items, cur, set, w)
@@ -35,23 +35,27 @@ function draw()
 	UiText("Day & Night & Weather Cycle")
 	pick("Daylight lasts", 80, {"2 min", "5 min", "9 min", "15 min", "30 min", "45 min"}, d,
 		function(i) SetInt("savegame.mod.daymin", i) end, 130)
-	pick("Night lasts", 200, {"1 min", "3 min", "6 min", "10 min", "20 min", "30 min"}, n,
+	pick("Night lasts", 190, {"1 min", "3 min", "6 min", "10 min", "20 min", "30 min"}, n,
 		function(i) SetInt("savegame.mod.nightmin", i) end, 130)
 	local wx = GetInt("savegame.mod.weather")
 	if wx < 1 or wx > 4 then wx = 2 end
-	pick("Weather (clouds, rain, storms, fog)", 320, {"Off", "Rare", "Sometimes", "Often"}, wx,
+	pick("Weather (clouds, rain, storms, fog)", 300, {"Off", "Rare", "Sometimes", "Often"}, wx,
 		function(i) SetInt("savegame.mod.weather", i) end)
-	pick("Nights are", 440, {"Pitch dark", "Dark", "Moonlit", "Bright"}, dark,
+	pick("Nights are", 410, {"Pitch dark", "Dark", "Moonlit", "Bright"}, dark,
 		function(i) SetInt("savegame.mod.dark", i) end, 170)
-	pick("A map starts at", 560, {"Morning", "Noon", "Evening", "Night", "Random", "As the map"}, s,
+	pick("A map starts at", 520, {"Morning", "Noon", "Evening", "Night", "Random", "As the map"}, s,
 		function(i) SetInt("savegame.mod.start", i) end, 170)
-	pick("Stars at night (your own screen)", 680, {"Shown", "Hidden"}, GetBool("savegame.mod.nostars") and 2 or 1,
+	local cal = GetInt("savegame.mod.calstart")
+	if cal < 1 or cal > 5 then cal = 1 end
+	pick("A new map's calendar starts on", 630, {"1 March", "1 June", "1 September", "1 December", "Random"}, cal,
+		function(i) SetInt("savegame.mod.calstart", i) end, 170)
+	pick("Stars at night (your own screen)", 740, {"Shown", "Hidden"}, GetBool("savegame.mod.nostars") and 2 or 1,
 		function(i) SetBool("savegame.mod.nostars", i == 2) end)
-	UiTranslate(0, 800)
+	UiTranslate(0, 840)
 	UiFont("regular.ttf", 22)
 	UiColor(0.7, 0.7, 0.7)
-	UiText("\"As the map\": a night map starts at night, any other in the morning.")
-	UiTranslate(0, 50)
+	UiText("\"As the map\": a night map starts at night, any other in the morning. Each map keeps its own date.")
+	UiTranslate(0, 45)
 	UiColor(1, 1, 1)
 	UiFont("bold.ttf", 32)
 	if UiTextButton("Close", 200, 50) then Menu() end

@@ -6,7 +6,8 @@
 --                               daynight.set.time                   jump to this hour (0-24), taken once
 --                               daynight.cycle                      seconds for a day and a night (0 / unset: the host's options)
 -- published (synced):           daynight.present, daynight.time (hours), daynight.rate (hours per second),
---                               daynight.day, daynight.night, daynight.light, daynight.active (not stood down)
+--                               daynight.day, daynight.night, daynight.light, daynight.active (not stood down);
+--                               the date: calendar.lua
 
 DayNight = {}
 
@@ -149,6 +150,7 @@ local function publish()
 	SetFloat("daynight.light", standing and 1 or dnDaylight(hour), true)
 	SetBool("daynight.active", not standing, true)
 	Weather.publish()
+	Calendar.publish()
 end
 
 function DayNight.serverInit()
@@ -156,6 +158,7 @@ function DayNight.serverInit()
 	sent = {}
 	hour = startHour()
 	day = 1
+	Calendar.init(hour)
 	applyT, publishT = 0, 0
 	standing = false
 	ClearKey("daynight.set")
@@ -171,8 +174,10 @@ function DayNight.serverTick(dt)
 	end
 	if not GetBool("daynight.freeze") then
 		hour = hour + dt * DayNight.rateAt(hour)
-		if hour >= 24 then hour = hour - 24; day = day + 1 end
+		if hour >= 24 then hour = hour - 24; day = day + 1; Calendar.midnight(); publishT = 0 end
 	end
+	if HasKey("daynight.set.date") then publishT = 0 end
+	Calendar.tick(dt, hour)
 	if Weather.tick(dt) then applyT = 0 end              -- (a flash of lightning shows at once)
 	publishT = publishT - dt
 	local night = not dnIsDaySky(hour)                -- (the flag flips at once: nobody reads a stale night)
@@ -191,6 +196,7 @@ function DayNight.serverTick(dt)
 end
 
 function DayNight.serverDestroy()
+	Calendar.destroy(hour)
 	SetBool("daynight.present", false, true)
 end
 

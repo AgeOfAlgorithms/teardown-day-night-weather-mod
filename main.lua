@@ -5,6 +5,7 @@
 
 #include "sky.lua"
 #include "weather.lua"
+#include "calendar.lua"
 #include "daynight.lua"
 
 -- (test builds add their modules here)

@@ -18,6 +18,20 @@ and the night 6, so an hour of the night passes faster than an hour of the day; 
 | `daynight.night` | bool | true from dusk (18:45) to dawn (5:15); flips at once |
 | `daynight.light` | float | daylight, 0 (night) to 1 (noon); 1 while stood down |
 | `daynight.active` | bool | false while stood down (`daynight.off`) |
+| `daynight.date` | string | the date in words, e.g. `"Sunday, 1 March"` (turns over at midnight with `daynight.day`) |
+| `daynight.weekday` | int | 1 Monday ... 7 Sunday |
+| `daynight.weekdayname` | string | `"Sunday"` |
+| `daynight.dayofmonth` | int | 1-31 |
+| `daynight.month` | int | 1-12 |
+| `daynight.monthname` | string | `"March"` |
+| `daynight.year` | int | the map's year: a new map starts in year 1 (a map or mod can set any date, below) |
+| `daynight.season` | string | `"spring"` (March-May), `"summer"`, `"autumn"`, `"winter"` (December-February) |
+
+The calendar is Gregorian. Each map keeps its own date in the host's savegame: the next session on the same map goes
+on from where the last one stopped (on the next day if the last session got past the hour this one starts at). A
+map played for the first time starts on the host's chosen date (options: 1 March, 1 June, 1 September, 1 December
+or random) of year 1. Mods can't read the real-world date (there is no `os` in Teardown), so a real date has to come
+from `daynight.set.date`.
 
 ```lua
 if GetBool("daynight.present") and GetBool("daynight.night") then ... end      -- e.g. a monster that only hunts at night
@@ -31,6 +45,7 @@ if GetBool("daynight.present") and GetBool("daynight.night") then ... end      -
 | `daynight.off.<name>` | bool | the same, one key per mod (`daynight.off.mymod`), so two mods don't clear each other's hold |
 | `daynight.freeze` | bool | the clock stands still |
 | `daynight.set.time` | float | jump to this hour; taken once and cleared |
+| `daynight.set.date` | string | jump to this date, `"YYYY-MM-DD"` (`"1247-10-03"`); taken once and cleared; saved as the map's date |
 | `daynight.cycle` | float | seconds for a day and a night together, for this session (at least 20; daylight and night keep the proportion of the host's options); 0 or unset = the host's options |
 
 ```lua
