@@ -25,11 +25,12 @@ WX_WET_RISE, WX_WET_FALL = 60, 240      -- the ground gets wet in a minute of ra
 -- minutes between two rolls of a kind, the chance a roll starts a front at the "Rare" setting, minutes a front lasts
 WX_SKY_GAP = {8, 16}
 WX_FOG_GAP = {10, 20}
-WX_SKY_CHANCE = 0.45
-WX_FOG_CHANCE = 0.40
+WX_SKY_CHANCE = 0.35
+WX_FOG_CHANCE = 0.30
 WX_SKY_KINDS = {cloudy = 0.25, rain = 0.50}      -- the share of sky fronts that are only cloudy / rain (the rest: storms)
 WX_SKY_LASTS = {3, 7}
 WX_FOG_LASTS = {3, 6}
+WX_OPEN = 0.25                          -- the opening rolls' share of a normal roll's chance (the user, 2026-11-14: weather at too many starts)
 WX_OFTEN = {[2] = 1, [3] = 1.7, [4] = 2.6}       -- the option: Rare, Sometimes, Often (1 = off) -> the chances' scale
 WX_THUNDER_GAP = {5, 16}                -- seconds between two flashes in a full storm
 -- a flash swells and dies away, never a hard cut (the user, 2026-11-11: too abrupt, and hard flashes are a risk for
@@ -160,12 +161,12 @@ local function open()
 	fog.wait, fog.left = rnd() * WX_FOG_GAP[2] * 60, 0
 	local o = often()
 	if o and not GetBool("daynight.weather.off") then
-		if rnd() < math.min(0.95, WX_SKY_CHANCE * o) * 0.5 then
+		if rnd() < math.min(0.95, WX_SKY_CHANCE * o) * WX_OPEN then
 			startSky(Weather.pickSky())
 			sky.left = sky.left * (0.3 + 0.7 * rnd())
 			level.cloud, level.rain, level.storm, wet = target.cloud, target.rain, target.storm, target.rain
 		end
-		if rnd() < math.min(0.95, WX_FOG_CHANCE * o) * 0.5 then
+		if rnd() < math.min(0.95, WX_FOG_CHANCE * o) * WX_OPEN then
 			startFog()
 			fog.left = fog.left * (0.3 + 0.7 * rnd())
 			level.fog = target.fog
