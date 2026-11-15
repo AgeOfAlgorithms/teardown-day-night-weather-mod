@@ -56,11 +56,13 @@ function Calendar.weekdayOf(z) return (z + 3) % 7 + 1 end
 
 function Calendar.serial() return serial end
 
+-- the level's id AND its file: a mod's map has the id "main" (from its main.xml; seen in the savegame, 2026-11-14), so
+-- the id alone gave every mod map one shared date
 local function levelKey()
-	local id = GetString("game.levelid")
-	if id == "" then id = GetString("game.levelpath") end
-	if id == "" then id = "default" end
-	return "savegame.mod.cal." .. string.gsub(id, "[^%w]", "_")
+	local id = GetString("game.levelid") .. "_" .. GetString("game.levelpath")
+	if id == "_" then id = "default" end
+	id = string.gsub(id, "[^%w]", "_")
+	return "savegame.mod.cal." .. id
 end
 
 local function firstDate()

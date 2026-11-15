@@ -20,7 +20,41 @@ local function pick(label, y, items, cur, set, w)
 	UiPop()
 end
 
+local page = 1                 -- 1 the main page, 2 the weather's page
+local WX_ROWS = {{"cloudy", "Clouds (the sky closes, no rain)"}, {"rain", "Rain"}, {"storm", "Thunderstorms (heavy rain, lightning)"},
+	{"fog", "Fog"}}
+
+-- one kind's setting: its own key, else the old single option (savegame.mod.weather), else Rare
+local function wxGet(kind)
+	local i = GetInt("savegame.mod.wx." .. kind)
+	if i < 1 or i > 4 then i = GetInt("savegame.mod.weather") end
+	if i < 1 or i > 4 then i = 2 end
+	return i
+end
+
+local function weatherPage()
+	UiTranslate(UiCenter(), 60)
+	UiAlign("center middle")
+	UiFont("bold.ttf", 48)
+	UiText("Weather")
+	for n, row in ipairs(WX_ROWS) do
+		pick(row[2], 80 + (n - 1) * 120, {"Off", "Rare", "Sometimes", "Often"}, wxGet(row[1]),
+			function(i) SetInt("savegame.mod.wx." .. row[1], i) end)
+	end
+	UiTranslate(0, 580)
+	UiFont("regular.ttf", 22)
+	UiColor(0.7, 0.7, 0.7)
+	UiText("Each is rolled for every few minutes; clear skies are still the rule. Rain and storms bring their own clouds.")
+	UiTranslate(0, 70)
+	UiColor(1, 1, 1)
+	UiFont("bold.ttf", 32)
+	if UiTextButton("All off", 200, 50) then for _, row in ipairs(WX_ROWS) do SetInt("savegame.mod.wx." .. row[1], 1) end end
+	UiTranslate(0, 70)
+	if UiTextButton("Back", 200, 50) then page = 1 end
+end
+
 function draw()
+	if page == 2 then weatherPage(); return end
 	local d = GetInt("savegame.mod.daymin")
 	if d < 1 or d > 6 then d = 3 end
 	local n = GetInt("savegame.mod.nightmin")
@@ -37,10 +71,21 @@ function draw()
 		function(i) SetInt("savegame.mod.daymin", i) end, 130)
 	pick("Night lasts", 190, {"1 min", "3 min", "6 min", "10 min", "20 min", "30 min"}, n,
 		function(i) SetInt("savegame.mod.nightmin", i) end, 130)
-	local wx = GetInt("savegame.mod.weather")
-	if wx < 1 or wx > 4 then wx = 2 end
-	pick("Weather (clouds, rain, storms, fog)", 300, {"Off", "Rare", "Sometimes", "Often"}, wx,
-		function(i) SetInt("savegame.mod.weather", i) end)
+	local names = {"Off", "Rare", "Sometimes", "Often"}
+	local sum = {}
+	for _, row in ipairs(WX_ROWS) do sum[#sum + 1] = names[wxGet(row[1])] end
+	UiPush()
+	UiTranslate(0, 300)
+	UiFont("regular.ttf", 28)
+	UiColor(1, 1, 1)
+	UiText("Weather")
+	UiTranslate(0, 50)
+	UiFont("bold.ttf", 30)
+	UiColor(0.75, 0.9, 1)
+	if UiTextButton("Clouds " .. sum[1] .. ", rain " .. sum[2] .. ", storms " .. sum[3] .. ", fog " .. sum[4] .. "  >", 900, 46) then
+		page = 2
+	end
+	UiPop()
 	pick("Nights are", 410, {"Pitch dark", "Dark", "Moonlit", "Bright"}, dark,
 		function(i) SetInt("savegame.mod.dark", i) end, 170)
 	pick("A map starts at", 520, {"Morning", "Noon", "Evening", "Night", "Random", "As the map"}, s,

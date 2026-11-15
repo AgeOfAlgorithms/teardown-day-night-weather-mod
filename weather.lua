@@ -27,11 +27,14 @@ WX_SKY_GAP = {8, 16}
 WX_FOG_GAP = {10, 20}
 WX_SKY_CHANCE = 0.35
 WX_FOG_CHANCE = 0.30
-WX_SKY_KINDS = {cloudy = 0.25, rain = 0.50}      -- the share of sky fronts that are only cloudy / rain (the rest: storms)
+WX_SKY_KINDS = {cloudy = 0.25, rain = 0.50, storm = 0.25}      -- each kind's share of the sky's chance at "Rare"
 WX_SKY_LASTS = {3, 7}
 WX_FOG_LASTS = {3, 6}
 WX_OPEN = 0.25                          -- the opening rolls' share of a normal roll's chance (the user, 2026-11-14: weather at too many starts)
-WX_OFTEN = {[2] = 1, [3] = 1.7, [4] = 2.6}       -- the option: Rare, Sometimes, Often (1 = off) -> the chances' scale
+-- the options, one per kind (savegame.mod.wx.cloudy / .rain / .storm / .fog; the user, 2026-11-14): Off, Rare,
+-- Sometimes, Often -> the kind's chance scaled by this. Unset: the old single option savegame.mod.weather, else Rare.
+WX_OFTEN = {[1] = 0, [2] = 1, [3] = 1.7, [4] = 2.6}
+WX_KINDS = {"cloudy", "rain", "storm", "fog"}
 WX_THUNDER_GAP = {5, 16}                -- seconds between two flashes in a full storm
 -- a flash swells and dies away, never a hard cut (the user, 2026-11-11: too abrupt, and hard flashes are a risk for
 -- photosensitive players): seconds it rises, stays, falls
@@ -67,11 +70,23 @@ function Weather.random() return rnd() end
 
 local function between(r) return r[1] + (r[2] - r[1]) * rnd() end
 
-local function often()
-	local i = GetInt("savegame.mod.weather")
-	if i == 1 then return nil end
+-- how often a kind comes, from the host's options: 0 (off), 1 (rare) ... 2.6 (often)
+function Weather.often(kind)
+	local i = GetInt("savegame.mod.wx." .. kind)
+	if not WX_OFTEN[i] then i = GetInt("savegame.mod.weather") end
 	return WX_OFTEN[i] or 1
 end
+
+-- a sky roll's chance and each sky kind's weight; a fog roll's chance
+local function chances()
+	local w, sum = {}, 0
+	for _, k in ipairs({"cloudy", "rain", "storm"}) do
+		w[k] = WX_SKY_CHANCE * WX_SKY_KINDS[k] * Weather.often(k)
+		sum = sum + w[k]
+	end
+	return math.min(0.95, sum), math.min(0.95, WX_FOG_CHANCE * Weather.often("fog")), w, sum
+end
+Weather.chances = chances
 
 function Weather.level(name) return level[name] end
 function Weather.wet() return wet end
@@ -143,9 +158,13 @@ local function startFog()
 	fog.left = between(WX_FOG_LASTS) * 60
 end
 
+-- a sky front's kind, each as likely as its weight (a kind set to Off never comes)
 function Weather.pickSky()
-	local r = rnd()
-	return (r < WX_SKY_KINDS.cloudy and "cloudy") or (r < WX_SKY_KINDS.cloudy + WX_SKY_KINDS.rain and "rain") or "storm"
+	local _, _, w, sum = chances()
+	local r = rnd() * sum
+	if r < w.cloudy then return "cloudy" end
+	if r < w.cloudy + w.rain or w.storm <= 0 then return "rain" end
+	return "storm"
 end
 
 local function clearSky() target.cloud, target.rain, target.storm = 0, 0, 0; sky.left = 0 end
@@ -159,14 +178,14 @@ local function open()
 	-- there, somewhere in its run), and the first wait is anywhere inside a gap
 	sky.wait, sky.left = rnd() * WX_SKY_GAP[2] * 60, 0
 	fog.wait, fog.left = rnd() * WX_FOG_GAP[2] * 60, 0
-	local o = often()
-	if o and not GetBool("daynight.weather.off") then
-		if rnd() < math.min(0.95, WX_SKY_CHANCE * o) * WX_OPEN then
+	local sc, fc = chances()
+	if not GetBool("daynight.weather.off") then
+		if rnd() < sc * WX_OPEN then
 			startSky(Weather.pickSky())
 			sky.left = sky.left * (0.3 + 0.7 * rnd())
 			level.cloud, level.rain, level.storm, wet = target.cloud, target.rain, target.storm, target.rain
 		end
-		if rnd() < math.min(0.95, WX_FOG_CHANCE * o) * WX_OPEN then
+		if rnd() < fc * WX_OPEN then
 			startFog()
 			fog.left = fog.left * (0.3 + 0.7 * rnd())
 			level.fog = target.fog
@@ -214,8 +233,8 @@ function Weather.tick(dt)
 			if word == "fog" then startFog() end
 		end
 	end
-	local o = often()
-	if GetBool("daynight.weather.off") or not o then
+	local sc, fc = chances()
+	if GetBool("daynight.weather.off") or (sc <= 0 and fc <= 0) then
 		if not GetBool("daynight.weather.off") and (sky.left > 0 or fog.left > 0) then
 			-- (the option is off but a mod asked for weather: let that front run out)
 			front(sky, WX_SKY_GAP, 0, function() end, clearSky, dt)
@@ -224,10 +243,10 @@ function Weather.tick(dt)
 			clearSky(); clearFog()
 		end
 	elseif not GetBool("daynight.weather.hold") then
-		front(sky, WX_SKY_GAP, math.min(0.95, WX_SKY_CHANCE * o), function()
+		front(sky, WX_SKY_GAP, sc, function()
 			startSky(Weather.pickSky())
 		end, clearSky, dt)
-		front(fog, WX_FOG_GAP, math.min(0.95, WX_FOG_CHANCE * o), startFog, clearFog, dt)
+		front(fog, WX_FOG_GAP, fc, startFog, clearFog, dt)
 	end
 
 	-- the clouds come before the rain and stay until it has stopped; thunder only in hard rain
